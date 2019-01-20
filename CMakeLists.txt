@@ -6,26 +6,27 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 include(GNUInstallDirs)
 include(CheckIncludeFile)
+include(CMakeDependentOption)
+include(FeatureSummary)
 include(TestVarArrays)
+
+# Options
+
+option(FIXED_POINT "Compile without floating point (for machines without a fast enough FPU)" OFF)
 
 # Configuration
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "i?86|x86|X86|amd64|AMD64|x86_64")
+
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(OPUS_X86_64 1)
+  endif()
+
   check_include_file(xmmintrin.h HAVE_SSE)
   check_include_file(emmintrin.h HAVE_SSE2)
   check_include_file(smmintrin.h HAVE_SSE4_1)
-endif()
+  check_include_file(immintrin.h HAVE_AVX)
 
-if(HAVE_SSE)
-  set(OPUS_X86_MAY_HAVE_SSE 1)
-  set(OPUS_X86_PRESUME_SSE 1)
-endif()
-if(HAVE_SSE2)
-  set(OPUS_X86_MAY_HAVE_SSE2 1)
-  set(OPUS_X86_PRESUME_SSE2 1)
-endif()
-if(HAVE_SSE2)
-  set(OPUS_X86_MAY_HAVE_SSE4_1 1)
 endif()
 
 if(MSVC)
@@ -40,7 +41,18 @@ else()
   endif()
 endif()
 
-configure_file(cmake/config.h.cmake config.h)
+# Dependent options
+
+cmake_dependent_option(OPUS_X86_MAY_HAVE_SSE "Use SSE (if avaiable)" ON "HAVE_SSE" OFF)
+cmake_dependent_option(OPUS_X86_PRESUME_SSE "Use SSE (hardcoded)" ON "OPUS_X86_MAY_HAVE_SSE;OPUS_X86_64" OFF)
+cmake_dependent_option(OPUS_X86_MAY_HAVE_SSE2 "Use SSE2 (if avaiable)" ON "HAVE_SSE2" OFF)
+cmake_dependent_option(OPUS_X86_PRESUME_SSE2 "Use SSE2 (hardcoded)" ON "OPUS_X86_MAY_HAVE_SSE2;OPUS_X86_64" OFF)
+cmake_dependent_option(OPUS_X86_MAY_HAVE_SSE4_1 "Use SSE4.1 (if avaiable)" ON "HAVE_SSE4_1" OFF)
+cmake_dependent_option(OPUS_X86_PRESUME_SSE4_1 "Use SSE4.1 (hardcoded)" OFF "OPUS_X86_MAY_HAVE_SSE4_1" OFF)
+
+if((NOT OPUS_X86_PRESUME_SSE4_1) OR (NOT OPUS_X86_PRESUME_SSE2) OR (NOT OPUS_X86_PRESUME_SSE))
+  set(OPUS_HAVE_RTCD 1)
+endif()
 
 # Sources
 
@@ -427,6 +439,19 @@ if(HAVE_SSE4_1)
   list(APPEND CELT_SOURCES ${CELT_SOURCES_SSE4_1})
 endif()
 
+configure_file(cmake/config.h.cmake config.h)
+
+# Features
+
+add_feature_info(MAY_HAVE_SSE OPUS_X86_MAY_HAVE_SSE "Use SSE (if avaiable)")
+add_feature_info(PRESUME_SSE OPUS_X86_PRESUME_SSE "Use SSE (hardcoded)")
+add_feature_info(MAY_HAVE_SSE2 OPUS_X86_MAY_HAVE_SSE2 "Use SSE2 (if avaiable)")
+add_feature_info(PRESUME_SSE2 OPUS_X86_PRESUME_SSE2 "Use SSE2 (hardcoded)")
+add_feature_info(MAY_HAVE_SSE4_1 OPUS_X86_MAY_HAVE_SSE4_1 "Use SSE4.1 (if avaiable)")
+add_feature_info(PRESUME_SSE4_1 OPUS_X86_PRESUME_SSE4_1 "Use SSE4.1 (hardcoded)")
+
+feature_summary(WHAT ALL)
+
 # Targets
 
 add_library(opus
@@ -458,4 +483,9 @@ target_compile_definitions(opus
     OPUS_BUILD
     HAVE_CONFIG_H
     $<$<BOOL:${BUILD_SHARED_LIBS}>:DLL_EXPORT>
+)
+
+set_target_properties(opus PROPERTIES
+  VERSION 0.7.0
+  SOVERSION 0
 )
