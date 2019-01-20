@@ -1,0 +1,13 @@
+#cmakedefine FIXED_POINT
+
+#cmakedefine USE_ALLOCA
+#cmakedefine VAR_ARRAYS
+#cmakedefine NONTHREADSAFE_PSEUDOSTACK
+
+#cmakedefine OPUS_X86_MAY_HAVE_SSE
+#cmakedefine OPUS_X86_MAY_HAVE_SSE2
+#cmakedefine OPUS_X86_MAY_HAVE_SSE4_1
+#cmakedefine OPUS_X86_PRESUME_SSE
+#cmakedefine OPUS_X86_PRESUME_SSE2
+#cmakedefine OPUS_X86_PRESUME_SSE
+#cmakedefine OPUS_X86_PRESUME_SSE4_1
